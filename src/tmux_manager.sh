@@ -3,8 +3,16 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-SESSION_NAME="claude_team"
+CTEAM_ROOT="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="${2:-$(pwd)}"
+CONFIG_DIR="$PROJECT_ROOT/.cteam"
+
+# Read session name from config or use default
+if [ -f "$CONFIG_DIR/config.yaml" ]; then
+    SESSION_NAME=$(grep "name:" "$CONFIG_DIR/config.yaml" | sed 's/.*name: *//')
+else
+    SESSION_NAME="cteam_$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g')"
+fi
 
 start_session() {
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
@@ -27,14 +35,14 @@ start_session() {
     # Split the bottom pane vertically (top and bottom on the right side)
     tmux split-window -v -t "$SESSION_NAME:0.1"
     
-    # Set pane titles
-    tmux send-keys -t "$SESSION_NAME:0.0" "echo '=== USER PANE ===' && echo 'This is your workspace. You can run commands here.'" Enter
-    tmux send-keys -t "$SESSION_NAME:0.1" "echo '=== MANAGER AGENT PANE ===' && echo 'Initializing Manager Claude Agent...'" Enter
-    tmux send-keys -t "$SESSION_NAME:0.2" "echo '=== DEVELOPER AGENT PANE ===' && echo 'Initializing Developer Claude Agent...'" Enter
+    # Set pane titles and change to project directory
+    tmux send-keys -t "$SESSION_NAME:0.0" "cd '$PROJECT_ROOT' && echo '=== USER PANE ===' && echo 'This is your workspace. You can run commands here.'" Enter
+    tmux send-keys -t "$SESSION_NAME:0.1" "cd '$PROJECT_ROOT' && echo '=== MANAGER AGENT PANE ===' && echo 'Initializing Manager Claude Agent...'" Enter
+    tmux send-keys -t "$SESSION_NAME:0.2" "cd '$PROJECT_ROOT' && echo '=== DEVELOPER AGENT PANE ===' && echo 'Initializing Developer Claude Agent...'" Enter
     
     # Start Claude Code agents in respective panes
-    tmux send-keys -t "$SESSION_NAME:0.1" "cd '$PROJECT_ROOT' && '$SCRIPT_DIR/agent_launcher.sh' manager" Enter
-    tmux send-keys -t "$SESSION_NAME:0.2" "cd '$PROJECT_ROOT' && '$SCRIPT_DIR/agent_launcher.sh' developer" Enter
+    tmux send-keys -t "$SESSION_NAME:0.1" "'$SCRIPT_DIR/agent_launcher.sh' manager '$PROJECT_ROOT'" Enter
+    tmux send-keys -t "$SESSION_NAME:0.2" "'$SCRIPT_DIR/agent_launcher.sh' developer '$PROJECT_ROOT'" Enter
     
     # Focus on user pane
     tmux select-pane -t "$SESSION_NAME:0.0"

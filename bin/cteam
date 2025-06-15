@@ -3,34 +3,81 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-SRC_DIR="$PROJECT_ROOT/src"
+CTEAM_ROOT="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(pwd)"
+SRC_DIR="$CTEAM_ROOT/src"
+CONFIG_DIR="$PROJECT_ROOT/.cteam"
+
+initialize_project() {
+    if [ -d "$CONFIG_DIR" ]; then
+        echo "Project already initialized with cteam."
+        return 0
+    fi
+    
+    echo "Initializing cteam for this project..."
+    mkdir -p "$CONFIG_DIR/contexts"
+    
+    # Copy default context files
+    cp "$CTEAM_ROOT/config/contexts/manager_context.md" "$CONFIG_DIR/contexts/"
+    cp "$CTEAM_ROOT/config/contexts/developer_context.md" "$CONFIG_DIR/contexts/"
+    
+    # Create project-specific config
+    cat > "$CONFIG_DIR/config.yaml" << EOF
+project:
+  name: $(basename "$PROJECT_ROOT")
+  root: $PROJECT_ROOT
+agents:
+  manager:
+    context: contexts/manager_context.md
+  developer:
+    context: contexts/developer_context.md
+session:
+  name: cteam_$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g')
+EOF
+    
+    echo "✅ cteam initialized successfully!"
+    echo "📁 Configuration stored in .cteam/"
+    echo "🔧 You can customize agent contexts in .cteam/contexts/"
+}
 
 show_help() {
     cat << EOF
-claude_team - Agent to Agent CLI Tool using Claude Code and tmux
+cteam - Claude Team Multi-Agent Development Environment
 
 USAGE:
     cteam <COMMAND>
 
 COMMANDS:
+    init        Initialize cteam for current project
     start       Start claude_team with 3-pane tmux session
     order       Send instructions to manager agent
     exit        Exit claude_team session and return to original process
     help        Show this help message
 
 EXAMPLES:
-    cteam start                           # Start the multi-agent environment
-    cteam order "Implement user login"    # Send order to manager agent
-    cteam exit                           # Exit and cleanup tmux session
-    cteam help                           # Show help
+    cteam init                           # Initialize cteam in current project
+    cteam start                          # Start the multi-agent environment
+    cteam order "Implement user login"   # Send order to manager agent
+    cteam exit                          # Exit and cleanup tmux session
+    cteam help                          # Show help
+
+NOTE:
+    Run 'cteam init' in your project root before using other commands.
 EOF
 }
 
 case "${1:-}" in
+    "init")
+        initialize_project
+        ;;
     "start")
+        if [ ! -d "$CONFIG_DIR" ]; then
+            echo "Error: Project not initialized with cteam"
+            echo "Run 'cteam init' first to initialize this project"
+            exit 1
+        fi
         echo "Starting Claude Team with 3-pane tmux session..."
-        exec "$SRC_DIR/tmux_manager.sh" start
+        exec "$SRC_DIR/tmux_manager.sh" start "$PROJECT_ROOT"
         ;;
     "order")
         if [ -z "$2" ]; then
@@ -38,11 +85,16 @@ case "${1:-}" in
             echo "Usage: cteam order \"<instruction content>\""
             exit 1
         fi
-        exec "$SRC_DIR/order_manager.sh" "$2"
+        if [ ! -d "$CONFIG_DIR" ]; then
+            echo "Error: Project not initialized with cteam"
+            echo "Run 'cteam init' first to initialize this project"
+            exit 1
+        fi
+        exec "$SRC_DIR/order_manager.sh" "$2" "$PROJECT_ROOT"
         ;;
     "exit")
         echo "Exiting Claude Team session..."
-        exec "$SRC_DIR/tmux_manager.sh" stop
+        exec "$SRC_DIR/tmux_manager.sh" stop "$PROJECT_ROOT"
         ;;
     "help"|"-h"|"--help")
         show_help

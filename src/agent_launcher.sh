@@ -3,9 +3,10 @@
 set -e
 
 AGENT_ROLE="${1:-user}"
+PROJECT_ROOT="${2:-$(pwd)}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-CONFIG_DIR="$PROJECT_ROOT/config"
+CTEAM_ROOT="$(dirname "$SCRIPT_DIR")"
+CONFIG_DIR="$PROJECT_ROOT/.cteam"
 
 # Check if claude command is available
 if ! command -v claude &> /dev/null; then
@@ -51,9 +52,7 @@ launch_agent() {
     echo ""
     echo "Type 'exit' to quit this agent."
     echo "Use tmux commands to interact with other panes:"
-    echo "  tmux send-keys -t claude_team:0.0 'message' && sleep 0.1 && tmux send-keys -t claude_team:0.0 Enter  # Send to user pane"
-    echo "  tmux send-keys -t claude_team:0.1 'message' Enter  # Send to manager pane"  
-    echo "  tmux send-keys -t claude_team:0.2 'message' Enter  # Send to developer pane"
+    echo "  Use helper scripts in src/ directory for agent communication"
     echo ""
     
     # Launch Claude Code with the role context

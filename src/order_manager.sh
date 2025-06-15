@@ -3,7 +3,16 @@
 set -e
 
 INSTRUCTION="$1"
-SESSION_NAME="claude_team"
+PROJECT_ROOT="${2:-$(pwd)}"
+CONFIG_DIR="$PROJECT_ROOT/.cteam"
+
+# Read session name from config or use default
+if [ -f "$CONFIG_DIR/config.yaml" ]; then
+    SESSION_NAME=$(grep "name:" "$CONFIG_DIR/config.yaml" | sed 's/.*name: *//')
+else
+    SESSION_NAME="cteam_$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g')"
+fi
+
 MANAGER_PANE="$SESSION_NAME:0.1"
 
 # Check if tmux session exists
