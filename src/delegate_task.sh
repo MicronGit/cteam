@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # Task delegation helper script for Manager Agent
-# Usage: ./delegate_task.sh "task description" "objective" "requirements"
+# Usage: ./delegate_task.sh "task description" "objective" "requirements" "branch_name"
 
 TASK_DESC="$1"
 OBJECTIVE="$2"
 REQUIREMENTS="$3"
+BRANCH_NAME="$4"
 SESSION_NAME="claude_team"
 DEVELOPER_PANE="$SESSION_NAME:0.2"
 
@@ -21,6 +22,7 @@ TASK_MESSAGE="🔧 TASK ASSIGNMENT for Developer Agent:
 📋 SUBTASK: $TASK_DESC
 🎯 OBJECTIVE: $OBJECTIVE
 📝 REQUIREMENTS: $REQUIREMENTS
+🌿 BRANCH: $BRANCH_NAME
 🔄 REPORT BACK: Please confirm completion when done
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
