@@ -1,0 +1,60 @@
+#!/bin/bash
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+SRC_DIR="$PROJECT_ROOT/src"
+
+show_help() {
+    cat << EOF
+claude_team - Agent to Agent CLI Tool using Claude Code and tmux
+
+USAGE:
+    cteam <COMMAND>
+
+COMMANDS:
+    start       Start claude_team with 3-pane tmux session
+    order       Send instructions to manager agent
+    exit        Exit claude_team session and return to original process
+    help        Show this help message
+
+EXAMPLES:
+    cteam start                           # Start the multi-agent environment
+    cteam order "Implement user login"    # Send order to manager agent
+    cteam exit                           # Exit and cleanup tmux session
+    cteam help                           # Show help
+EOF
+}
+
+case "${1:-}" in
+    "start")
+        echo "Starting Claude Team with 3-pane tmux session..."
+        exec "$SRC_DIR/tmux_manager.sh" start
+        ;;
+    "order")
+        if [ -z "$2" ]; then
+            echo "Error: No instruction content provided"
+            echo "Usage: cteam order \"<instruction content>\""
+            exit 1
+        fi
+        exec "$SRC_DIR/order_manager.sh" "$2"
+        ;;
+    "exit")
+        echo "Exiting Claude Team session..."
+        exec "$SRC_DIR/tmux_manager.sh" stop
+        ;;
+    "help"|"-h"|"--help")
+        show_help
+        ;;
+    "")
+        echo "Error: No command specified"
+        echo "Run 'cteam help' for usage information"
+        exit 1
+        ;;
+    *)
+        echo "Error: Unknown command '$1'"
+        echo "Run 'cteam help' for usage information"
+        exit 1
+        ;;
+esac
