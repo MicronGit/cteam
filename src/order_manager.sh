@@ -2,30 +2,29 @@
 
 set -e
 
-INSTRUCTION="$1"
+# Source modules
+. "$(dirname "${BASH_SOURCE[0]}")/logger.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/validator.sh"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${2:-$(pwd)}"
-CONFIG_DIR="$PROJECT_ROOT/.cteam"
 
-# Read session name from config or use default
-if [ -f "$CONFIG_DIR/config.yaml" ]; then
-    SESSION_NAME=$(grep "name:" "$CONFIG_DIR/config.yaml" | sed 's/.*name: *//')
-else
-    SESSION_NAME="cteam_$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g')"
-fi
+# Source configuration
+eval "$("$SCRIPT_DIR/config.sh" "$PROJECT_ROOT")"
 
-MANAGER_PANE="$SESSION_NAME:0.1"
+INSTRUCTION="$1"
 
-# Check if tmux session exists
-if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-    echo "Error: Claude Team session '$SESSION_NAME' not found"
-    echo "Please start the session first with: cteam start"
+# Validate inputs
+validate_required_param "$INSTRUCTION" "instruction" || exit 1
+
+# Validate session and pane
+if ! validate_session "$SESSION_NAME"; then
+    log_error "Please start the session first with: cteam start"
     exit 1
 fi
 
-# Check if manager pane exists
-if ! tmux list-panes -t "$SESSION_NAME:0" -F '#{pane_index}' | grep -q "^1$"; then
-    echo "Error: Manager agent pane not found"
-    echo "Please ensure the session is properly initialized"
+if ! validate_pane "$SESSION_NAME" "1"; then
+    log_error "Please ensure the session is properly initialized"
     exit 1
 fi
 
@@ -37,8 +36,12 @@ ORDER_MESSAGE="🎯 NEW ORDER RECEIVED:
 Please review this order and provide your response or ask for clarification if needed.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# Initialize history logging for this order
+HISTORY_FILE=$("$SCRIPT_DIR/history_logger.sh" init "$INSTRUCTION")
+log_info "Order history initialized: $HISTORY_FILE"
+
 # Send the formatted message to the manager pane
-echo "Sending order to Manager Agent..."
+log_info "Sending order to Manager Agent..."
 
 # Clear any previous input in the manager pane
 tmux send-keys -t "$MANAGER_PANE" C-c
@@ -47,11 +50,22 @@ tmux send-keys -t "$MANAGER_PANE" C-c
 # This simulates the user typing the instruction directly to Claude
 ORDER_INPUT="$INSTRUCTION
 
-Please acknowledge this order and proceed with execution. Break down the task if needed and coordinate with the Developer Agent if implementation is required."
+IMPORTANT: You are the Manager Agent. 
+- DO NOT implement code yourself
+- Break down this task into subtasks
+- Delegate ALL implementation work to the Developer Agent using ./src/delegate_task.sh
+- Wait for Developer completion reports before proceeding
+- Only report back to user when ALL tasks are completed by Developer
+
+Please acknowledge this order and start by analyzing the task for delegation."
 
 # Send the order directly as input to Claude Code
 tmux send-keys -t "$MANAGER_PANE" "$ORDER_INPUT" && sleep 0.1 && tmux send-keys -t "$MANAGER_PANE" ENTER
 
+# Log the order dispatch
+"$SCRIPT_DIR/history_logger.sh" log_manager "ORDER_RECEIVED" "Order dispatched to Manager Agent for processing"
+
 # Also send a notification to the user pane
-echo "✅ Order successfully sent to Manager Agent!"
-echo "📺 Check the Manager Agent pane to see the response"
+log_success "Order successfully sent to Manager Agent!"
+log_info "📺 Check the Manager Agent pane to see the response"
+log_info "📝 Order history: $HISTORY_FILE"

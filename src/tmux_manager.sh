@@ -2,29 +2,36 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CTEAM_ROOT="$(dirname "$SCRIPT_DIR")"
-PROJECT_ROOT="${2:-$(pwd)}"
-CONFIG_DIR="$PROJECT_ROOT/.cteam"
+# Source modules
+. "$(dirname "${BASH_SOURCE[0]}")/logger.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/validator.sh"
 
-# Read session name from config or use default
-if [ -f "$CONFIG_DIR/config.yaml" ]; then
-    SESSION_NAME=$(grep "name:" "$CONFIG_DIR/config.yaml" | sed 's/.*name: *//')
-else
-    SESSION_NAME="cteam_$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g')"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${2:-$(pwd)}"
+
+# Source configuration
+eval "$("$SCRIPT_DIR/config.sh" "$PROJECT_ROOT")"
 
 start_session() {
+    # Clean session name output for debugging
+    log_info "Using session name: '$SESSION_NAME'"
+    
+    # Check if we're in a tmux session already
+    if [ -n "$TMUX" ]; then
+        log_error "Already in a tmux session. Please exit current session first."
+        exit 1
+    fi
+    
+    # Check if session already exists
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-        echo "Session '$SESSION_NAME' already exists. Attaching..."
-        tmux attach-session -t "$SESSION_NAME"
-        return 0
+        log_info "Session '$SESSION_NAME' already exists. Attaching..."
+        TERM=xterm-256color exec tmux attach-session -t "$SESSION_NAME"
     fi
 
-    echo "Creating new tmux session: $SESSION_NAME"
+    log_info "Creating new tmux session: $SESSION_NAME"
     
     # Create new session with the first window
-    tmux new-session -d -s "$SESSION_NAME" -x 120 -y 40
+    TERM=xterm-256color tmux new-session -d -s "$SESSION_NAME" -x 120 -y 40
     
     # Rename the first window
     tmux rename-window -t "$SESSION_NAME:0" "claude-team"
@@ -50,19 +57,23 @@ start_session() {
     # Set window layout
     tmux select-layout -t "$SESSION_NAME:0" main-vertical
     
-    echo "Session created successfully!"
-    echo "Attaching to session..."
+    log_success "Session created successfully!"
+    log_info "Attaching to session..."
     
     # Attach to the session
-    tmux attach-session -t "$SESSION_NAME"
+    TERM=xterm-256color exec tmux attach-session -t "$SESSION_NAME"
 }
 
 stop_session() {
-    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-        echo "Stopping Claude Team session: $SESSION_NAME"
+    if ! validate_session "$SESSION_NAME"; then
+        exit 1
+fi
+
+if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+        log_info "Stopping Claude Team session: $SESSION_NAME"
         
         # Send exit commands to all Claude Code agents before killing the session
-        echo "Sending exit commands to all agents..."
+        log_info "Sending exit commands to all agents..."
         
         # Send Ctrl+C and exit to manager pane
         tmux send-keys -t "$SESSION_NAME:0.1" C-c 2>/dev/null || true
@@ -82,13 +93,13 @@ stop_session() {
         sleep 2
         
         # Kill the entire session
-        echo "Terminating tmux session..."
+        log_info "Terminating tmux session..."
         tmux kill-session -t "$SESSION_NAME"
         
-        echo "✅ Claude Team session terminated successfully"
-        echo "Returned to original shell process"
+        log_success "Claude Team session terminated successfully"
+        log_info "Returned to original shell process"
     else
-        echo "Session '$SESSION_NAME' does not exist or is already stopped"
+        log_warn "Session '$SESSION_NAME' does not exist or is already stopped"
     fi
 }
 
@@ -100,7 +111,7 @@ case "${1:-}" in
         stop_session
         ;;
     *)
-        echo "Usage: $0 {start|stop}"
+        log_info "Usage: $0 {start|stop}"
         exit 1
         ;;
 esac

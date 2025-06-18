@@ -32,7 +32,7 @@ agents:
   developer:
     context: contexts/developer_context.md
 session:
-  name: cteam_$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g')
+  name: $(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g')
 EOF
     
     echo "✅ cteam initialized successfully!"
