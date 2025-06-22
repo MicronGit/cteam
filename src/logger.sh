@@ -13,17 +13,20 @@ MAX_LOG_FILES=5
 # Create log directory if it doesn't exist
 mkdir -p "$LOG_DIR"
 
-# Log levels
-declare -A LOG_LEVELS=(
-    [ERROR]=0
-    [WARN]=1
-    [INFO]=2
-    [DEBUG]=3
-)
+# Log levels - using functions for compatibility
+get_log_level() {
+    case "$1" in
+        ERROR) echo 0 ;;
+        WARN) echo 1 ;;
+        INFO) echo 2 ;;
+        DEBUG) echo 3 ;;
+        *) echo 0 ;;
+    esac
+}
 
 # Default to INFO level if not set
 LOG_LEVEL_NAME=${LOG_LEVEL:-INFO}
-LOG_LEVEL=${LOG_LEVELS[$LOG_LEVEL_NAME]}
+LOG_LEVEL=$(get_log_level "$LOG_LEVEL_NAME")
 
 # ANSI color codes
 COLOR_RED='\033[0;31m'
@@ -55,8 +58,8 @@ rotate_logs() {
 
 # Logging functions
 log_error() {
-    local current_level=${LOG_LEVELS[$LOG_LEVEL_NAME]:-0}
-    if [ ${LOG_LEVELS[ERROR]} -le $current_level ]; then
+    local current_level=$(get_log_level "$LOG_LEVEL_NAME")
+    if [ $(get_log_level "ERROR") -le $current_level ]; then
         echo -e "${COLOR_RED}[ERROR] $1${COLOR_RESET}" >&2
         rotate_logs
         format_json_log "ERROR" "$1" >> "$LOG_FILE"
@@ -64,8 +67,8 @@ log_error() {
 }
 
 log_warn() {
-    local current_level=${LOG_LEVELS[$LOG_LEVEL_NAME]:-0}
-    if [ ${LOG_LEVELS[WARN]} -le $current_level ]; then
+    local current_level=$(get_log_level "$LOG_LEVEL_NAME")
+    if [ $(get_log_level "WARN") -le $current_level ]; then
         echo -e "${COLOR_YELLOW}[WARN] $1${COLOR_RESET}" >&2
         rotate_logs
         format_json_log "WARN" "$1" >> "$LOG_FILE"
@@ -73,8 +76,8 @@ log_warn() {
 }
 
 log_info() {
-    local current_level=${LOG_LEVELS[$LOG_LEVEL_NAME]:-0}
-    if [ ${LOG_LEVELS[INFO]} -le $current_level ]; then
+    local current_level=$(get_log_level "$LOG_LEVEL_NAME")
+    if [ $(get_log_level "INFO") -le $current_level ]; then
         echo -e "${COLOR_BLUE}[INFO] $1${COLOR_RESET}"
         rotate_logs
         format_json_log "INFO" "$1" >> "$LOG_FILE"
@@ -82,8 +85,8 @@ log_info() {
 }
 
 log_debug() {
-    local current_level=${LOG_LEVELS[$LOG_LEVEL_NAME]:-0}
-    if [ ${LOG_LEVELS[DEBUG]} -le $current_level ]; then
+    local current_level=$(get_log_level "$LOG_LEVEL_NAME")
+    if [ $(get_log_level "DEBUG") -le $current_level ]; then
         echo -e "${COLOR_GREEN}[DEBUG] $1${COLOR_RESET}"
         rotate_logs
         format_json_log "DEBUG" "$1" >> "$LOG_FILE"
