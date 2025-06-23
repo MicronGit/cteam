@@ -34,7 +34,7 @@ start_session() {
   TERM=xterm-256color tmux new-session -d -s "$SESSION_NAME" -x 120 -y 40
 
   # Rename the first window
-  tmux rename-window -t "$SESSION_NAME:0" "claude-team"
+  tmux rename-window -t "$SESSION_NAME:0" "cteam"
 
   # Split horizontally (left and right)
   tmux split-window -h -t "$SESSION_NAME:0"
